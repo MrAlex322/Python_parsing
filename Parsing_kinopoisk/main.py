@@ -95,7 +95,7 @@ driver = webdriver.Chrome(service=service, options=chrome_options)
 count_id = 0
 num_row = 1
 while count_id < 15:
-    id_value = id_list[i]
+    id_value = id_list[count_id]
     url = f'https://www.kinopoisk.ru/film/{id_value}'
     print(id_value)
 
@@ -128,7 +128,7 @@ while count_id < 15:
     if len(rows) > 0:
         row = rows[num_row]
         row.append(rating)
-    j += 1
+    num_row += 1
 
     with open(filename, 'w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
