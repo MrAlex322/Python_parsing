@@ -92,9 +92,9 @@ chrome_options.add_argument("--headless")
 service = Service('/path/to/chromedriver')
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
-i = 0
-j = 1
-while i < 15:
+count_id = 0
+num_row = 1
+while count_id < 15:
     id_value = id_list[i]
     url = f'https://www.kinopoisk.ru/film/{id_value}'
     print(id_value)
@@ -126,7 +126,7 @@ while i < 15:
         rows = list(reader)
 
     if len(rows) > 0:
-        row = rows[j]
+        row = rows[num_row]
         row.append(rating)
     j += 1
 
@@ -135,4 +135,4 @@ while i < 15:
         writer.writerows(rows)
 
     print(f"Рейтинг добавлен в файл: {filename}")
-    i += 1
+    count_id += 1
