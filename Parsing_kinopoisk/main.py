@@ -80,10 +80,10 @@ class RatingScraper:
 
         filename = 'movies_data.csv'
 
-        rows = []
+        films_data = []
         with open(filename, 'r', encoding='utf-8') as file:
             reader = csv.reader(file)
-            rows = list(reader)
+            films_data = list(reader)
 
         for i, elem in enumerate(self.id_list):
             id_value = elem
@@ -97,13 +97,16 @@ class RatingScraper:
             element = soup.find('span', class_=lambda c: c and 'styles_rating' in c)
             rating = element.text if element else 'Рейтинг не найден'
 
-            if len(rows) > 0 and i < len(rows):
-                row = rows[i+1]
+            if len(films_data) > 0 and i < len(films_data):
+                row = films_data[i + 1]
                 row.append(rating)
+
+        sorted_films_data = sorted(films_data[1:], key=lambda x: float(x[-1]) if x[-1].replace('.', '', 1).isdigit() else 0, reverse=True)
+        sorted_films_data = [films_data[0]] + sorted_films_data
 
         with open(filename, 'w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            writer.writerows(rows)
+            writer.writerows(sorted_films_data)
 
         print("Данные о рейтинге успешно сохранены в CSV-файл.")
 
@@ -114,4 +117,3 @@ if __name__ == '__main__':
 
     rating_scraper = RatingScraper(id_list)
     rating_scraper.scrape_ratings()
-
