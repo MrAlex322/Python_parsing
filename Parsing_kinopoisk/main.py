@@ -1,5 +1,4 @@
 import csv
-import os
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -25,6 +24,7 @@ class KinopoiskScraper:
         response = requests.post('https://graphql.kinopoisk.ru/graphql/', params=self.params, headers=self.headers, json=self.json_data)
         srcs = response.json()
         id_list = []
+
         with open('movies_data.csv', 'w', encoding='utf-8', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(['Название', 'Бюджет', 'Рейтинг'])
@@ -64,7 +64,7 @@ class KinopoiskScraper:
                         writer.writerow([title, formatted_box_office])
                         id_list.append(film_id)
 
-        print("Данные успешно сохранены в CSV-файл.")
+        print("Данные о фильмах успешно сохранены в CSV-файл.")
         return id_list
 
 
@@ -78,46 +78,34 @@ class RatingScraper:
         service = Service('/path/to/chromedriver')
         driver = webdriver.Chrome(service=service, options=chrome_options)
 
+        filename = 'movies_data.csv'
+
+        rows = []
+        with open(filename, 'r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            rows = list(reader)
+
         for i, elem in enumerate(self.id_list):
             id_value = elem
             url = f'https://www.kinopoisk.ru/film/{id_value}'
-            print(id_value)
+            print(f"Рейтинг фильма - {id_value} добавлен")
 
             driver.get(url)
-
             driver.execute_script("return document.readyState")
-
             html = driver.page_source
-
-            folder_path = 'film_html'
-            filename = os.path.join(folder_path, f'films{id_value}.html')
-
-            with open(filename, 'w', encoding='utf-8') as file:
-                file.write(html)
-                print(f"HTML-код сохранен в файл: {filename}")
-
             soup = BeautifulSoup(html, 'html.parser')
-
             element = soup.find('span', class_=lambda c: c and 'styles_rating' in c)
-
             rating = element.text if element else 'Рейтинг не найден'
 
-            filename = 'box_office_data.csv'
-
-            rows = []
-            with open(filename, 'r', encoding='utf-8') as file:
-                reader = csv.reader(file)
-                rows = list(reader)
-
             if len(rows) > 0 and i < len(rows):
-                row = rows[i]
+                row = rows[i+1]
                 row.append(rating)
 
-            with open(filename, 'w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                writer.writerows(rows)
+        with open(filename, 'w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerows(rows)
 
-            print(f"Рейтинг добавлен в файл: {filename}")
+        print("Данные о рейтинге успешно сохранены в CSV-файл.")
 
 
 if __name__ == '__main__':
@@ -126,3 +114,4 @@ if __name__ == '__main__':
 
     rating_scraper = RatingScraper(id_list)
     rating_scraper.scrape_ratings()
+
