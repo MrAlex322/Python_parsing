@@ -6,133 +6,123 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 
-headers = {
-    'authority': 'graphql.kinopoisk.ru',
-    'accept': '*/*',
-    'accept-language': 'ru,en;q=0.9',
-    'content-type': 'application/json',
-    'dnt': '1',
-    'origin': 'https://www.kinopoisk.ru',
-    'referer': 'https://www.kinopoisk.ru/',
-    'sec-ch-ua': '"Not.A/Brand";v="8", "Chromium";v="114", "Microsoft Edge";v="114"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-site',
-    'service-id': '25',
-    'uber-trace-id': '9ecf4b7860a891a5:1ae73c12a911d5ad:0:1',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.51',
-    'x-request-id': '1687261876555367-14143657862820114590',
-}
 
-params = {
-    'operationName': 'BoxOffices',
-}
+class KinopoiskScraper:
+    def __init__(self):
+        self.headers = {
+            'accept': '*/*',
+            'content-type': 'application/json',
+            'service-id': '25',
+        }
+        self.params = {'operationName': 'BoxOffices'}
+        self.json_data = {
+            'operationName': 'BoxOffices',
+            'variables': {},
+            'query': 'query BoxOffices { weekendBoxOfficeMovies { endDate startDate russiaBoxOfficeMovies { movie { ...BoxOfficeMovie __typename } weekendBoxOffice { rusBox { amount __typename } __typename } totalBoxOffice { weeks rusBox { amount __typename } __typename } __typename } usaBoxOfficeMovies { movie { ...BoxOfficeMovie __typename } weekendBoxOffice { usaBox { amount __typename } __typename } totalBoxOffice { weeks usaBox { amount __typename } __typename } __typename } worldBoxOfficeMovies { movie { ...BoxOfficeMovie __typename } weekendBoxOffice { worldBox { amount __typename } __typename } totalBoxOffice { weeks worldBox { amount __typename } __typename } __typename } __typename } } fragment BoxOfficeMovie on Movie { id title { russian original __typename } poster { avatarsUrl __typename } __typename } ',
+        }
 
-json_data = {
-    'operationName': 'BoxOffices',
-    'variables': {},
-    'query': 'query BoxOffices { weekendBoxOfficeMovies { endDate startDate russiaBoxOfficeMovies { movie { ...BoxOfficeMovie __typename } weekendBoxOffice { rusBox { amount __typename } __typename } totalBoxOffice { weeks rusBox { amount __typename } __typename } __typename } usaBoxOfficeMovies { movie { ...BoxOfficeMovie __typename } weekendBoxOffice { usaBox { amount __typename } __typename } totalBoxOffice { weeks usaBox { amount __typename } __typename } __typename } worldBoxOfficeMovies { movie { ...BoxOfficeMovie __typename } weekendBoxOffice { worldBox { amount __typename } __typename } totalBoxOffice { weeks worldBox { amount __typename } __typename } __typename } __typename } } fragment BoxOfficeMovie on Movie { id title { russian original __typename } poster { avatarsUrl __typename } __typename } ',
-}
+    def scrape_box_office_movies(self):
+        response = requests.post('https://graphql.kinopoisk.ru/graphql/', params=self.params, headers=self.headers, json=self.json_data)
+        srcs = response.json()
+        id_list = []
+        with open('movies_data.csv', 'w', encoding='utf-8', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Название', 'Бюджет', 'Рейтинг'])
 
-response = requests.post('https://graphql.kinopoisk.ru/graphql/', params=params, headers=headers, json=json_data)
+            for key, value in srcs["data"].items():
+                russia_movie_rental = value.get("russiaBoxOfficeMovies")
+                usa_movie_rental = value.get("usaBoxOfficeMovies")
+                world_movie_rental = value.get("worldBoxOfficeMovies")
 
-# Сохраняем название и бюджет фильмов
+                if russia_movie_rental:
+                    for item in russia_movie_rental:
+                        movie = item['movie']
+                        title = movie['title']['russian']
+                        film_id = movie['id']
+                        box_office = item['weekendBoxOffice']['rusBox']['amount']
+                        formatted_box_office = "{:.1f} млн. руб".format(box_office / 10 ** 6)
+                        writer.writerow([title, formatted_box_office])
+                        id_list.append(film_id)
 
-srcs = response.json()
-result = {}
-id_list = []
-with open('box_office_data.csv', 'w', encoding='utf-8', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(['Название', 'Бюджет', 'Рейтинг'])
+                if usa_movie_rental:
+                    for item in usa_movie_rental:
+                        movie = item['movie']
+                        title = movie['title']['russian']
+                        film_id = movie['id']
+                        box_office = item['weekendBoxOffice']['usaBox']['amount']
+                        formatted_box_office = "{:.1f} млн. руб".format(box_office / 10 ** 6)
+                        writer.writerow([title, formatted_box_office])
+                        id_list.append(film_id)
 
-    for key, value in srcs["data"].items():
-        inner_russia = value.get("russiaBoxOfficeMovies")
-        inner_usa = value.get("usaBoxOfficeMovies")
-        inner_world = value.get("worldBoxOfficeMovies")
+                if world_movie_rental:
+                    for item in world_movie_rental:
+                        movie = item['movie']
+                        title = movie['title']['russian']
+                        film_id = movie['id']
+                        box_office = item['weekendBoxOffice']['worldBox']['amount']
+                        formatted_box_office = "{:.1f} млн. руб".format(box_office / 10 ** 6)
+                        writer.writerow([title, formatted_box_office])
+                        id_list.append(film_id)
 
-        if inner_russia:
-            for item in inner_russia:
-                movie = item['movie']
-                title = movie['title']['russian']
-                film_id = movie['id']
-                box_office = item['weekendBoxOffice']['rusBox']['amount']
-                formatted_box_office = "{:.1f} млн. руб".format(box_office / 10 ** 6)
-                writer.writerow([title, formatted_box_office])
-                id_list.append(film_id)
+        print("Данные успешно сохранены в CSV-файл.")
+        return id_list
 
-        if inner_usa:
-            for item in inner_usa:
-                movie = item['movie']
-                title = movie['title']['russian']
-                film_id = movie['id']
-                box_office = item['weekendBoxOffice']['usaBox']['amount']
-                formatted_box_office = "{:.1f} млн. руб".format(box_office / 10 ** 6)
-                writer.writerow([title, formatted_box_office])
-                id_list.append(film_id)
 
-        if inner_world:
-            for item in inner_world:
-                movie = item['movie']
-                title = movie['title']['russian']
-                film_id = movie['id']
-                box_office = item['weekendBoxOffice']['worldBox']['amount']
-                formatted_box_office = "{:.1f} млн. руб".format(box_office / 10 ** 6)
-                writer.writerow([title, formatted_box_office])
-                id_list.append(film_id)
+class RatingScraper:
+    def __init__(self, id_list):
+        self.id_list = id_list
 
-print("Данные успешно сохранены в CSV-файл.")
-print(id_list)
+    def scrape_ratings(self):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        service = Service('/path/to/chromedriver')
+        driver = webdriver.Chrome(service=service, options=chrome_options)
 
-# Сохраняем рейтинг фильмов
+        for i, elem in enumerate(self.id_list):
+            id_value = elem
+            url = f'https://www.kinopoisk.ru/film/{id_value}'
+            print(id_value)
 
-chrome_options = Options()
-chrome_options.add_argument("--headless")
-service = Service('/path/to/chromedriver')
-driver = webdriver.Chrome(service=service, options=chrome_options)
+            driver.get(url)
 
-count_id = 0
-num_row = 1
-while count_id < 15:
-    id_value = id_list[count_id]
-    url = f'https://www.kinopoisk.ru/film/{id_value}'
-    print(id_value)
+            driver.execute_script("return document.readyState")
 
-    driver.get(url)
+            html = driver.page_source
 
-    driver.execute_script("return document.readyState")
+            folder_path = 'film_html'
+            filename = os.path.join(folder_path, f'films{id_value}.html')
 
-    html = driver.page_source
+            with open(filename, 'w', encoding='utf-8') as file:
+                file.write(html)
+                print(f"HTML-код сохранен в файл: {filename}")
 
-    folder_path = 'film_html'
-    filename = os.path.join(folder_path, f'film{id_value}.html')
+            soup = BeautifulSoup(html, 'html.parser')
 
-    with open(filename, 'w', encoding='utf-8') as file:
-        file.write(html)
-        print(f"HTML-код сохранен в файл: {filename}")
+            element = soup.find('span', class_=lambda c: c and 'styles_rating' in c)
 
-    soup = BeautifulSoup(html, 'html.parser')
+            rating = element.text if element else 'Рейтинг не найден'
 
-    element = soup.find('span', class_=lambda c: c and 'styles_rating' in c)
+            filename = 'box_office_data.csv'
 
-    rating = element.text if element else 'Рейтинг не найден'
+            rows = []
+            with open(filename, 'r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                rows = list(reader)
 
-    filename = 'box_office_data.csv'
+            if len(rows) > 0 and i < len(rows):
+                row = rows[i]
+                row.append(rating)
 
-    rows = []
-    with open(filename, 'r', encoding='utf-8') as file:
-        reader = csv.reader(file)
-        rows = list(reader)
+            with open(filename, 'w', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerows(rows)
 
-    if len(rows) > 0:
-        row = rows[num_row]
-        row.append(rating)
-    num_row += 1
+            print(f"Рейтинг добавлен в файл: {filename}")
 
-    with open(filename, 'w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        writer.writerows(rows)
 
-    print(f"Рейтинг добавлен в файл: {filename}")
-    count_id += 1
+if __name__ == '__main__':
+    scraper = KinopoiskScraper()
+    id_list = scraper.scrape_box_office_movies()
+
+    rating_scraper = RatingScraper(id_list)
+    rating_scraper.scrape_ratings()
